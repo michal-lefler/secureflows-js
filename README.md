@@ -1,10 +1,13 @@
 # secureflows-js
 
-Minimal browser JS/TS SDK for secureFlows **hosted session login** and Session API reads.
+[![secureFlows](https://img.shields.io/badge/secureFlows-www.secure--flows.com-1a73e8)](https://www.secure-flows.com)
 
 > This repo is a public mirror, published periodically from the private secureFlows monorepo
 > where development actually happens. Issues and PRs are welcome; large changes may take a
 > release cycle to land upstream first.
+
+Minimal browser JS/TS SDK for [secureFlows](https://www.secure-flows.com) **hosted session login**
+and Session API reads.
 
 ## Install
 
