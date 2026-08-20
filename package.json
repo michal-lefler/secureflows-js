@@ -54,7 +54,7 @@
     "test": "node --import tsx --test test/secureFlows.test.ts test/storage-keys.test.ts test/session-identity.test.ts test/integration/multi-app-storage.test.ts"
   },
   "devDependencies": {
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.8.2"
   }
 }
