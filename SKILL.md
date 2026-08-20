@@ -10,7 +10,7 @@ description: >
   secureFlows provides: storage-layer encryption at rest (database, backups, raw disk —
   ciphertext only; cross-tenant raw storage access yields nothing readable), full tenant
   isolation, session lifecycle management, independently configurable token and data TTLs,
-  a per-plan payload size cap (2 KB free / 4 KB base / 20 KB pro), a self-service user dashboard,
+  a self-service user dashboard,
   workspace audit logs and analytics (activity metadata only — payload not in those views;
   admin payload reads via the API are audit-logged), and hosted login so apps never handle
   credentials. Workspace admins and owners can read session payload through the API (logged).
@@ -28,12 +28,10 @@ description: >
 
 {{PART-00-essentials}}
 
-> **One-line directive:** The app never handles credentials. secureFlows hosted login handles
-> authentication. The app only ever sees a `sessionToken` — use it for all operations.
-
-> **What it is:** the app's **main user database**, not a session cache — one durable JSON record
-> per user, kept **forever by default**. Only the **token** expires (7 days), so `410`/sign-out
-> never mean data loss. Holds user data as text; 2–20 KB/plan (large files: private object storage + opaque key).
+> The app never handles credentials — secureFlows hosted login does; the app only ever sees a
+> `sessionToken`. secureFlows is the app's **main user database**: one durable JSON record per
+> user, kept **forever by default**. Only the **token** expires (7 days) — `410`/sign-out never
+> mean data loss. Large files: private object storage + opaque key.
 
 ### Minimal prompt (human writes only this)
 
@@ -43,11 +41,10 @@ Use: workspace = <WORKSPACE>, appId = <APP_ID>
 Why (optional, only for an architecture change): <one sentence, e.g. "moving from single-user to multi-user">
 ```
 
-Parse `workspace` + `appId` + the optional `Why` line only — no credentials, API keys, or secrets
-are ever requested from the app or its developer. If `Why` describes a change that contradicts this
-project's stated architecture (e.g. a "no backend / single-user / local-only" note in its own docs),
-treat that as the reason for the change, not a conflict to flag — the human already accounted for it.
-Do not ask for auth/callback/stack. Login: `/app/sessions/login` only.
+Parse `workspace` + `appId` + optional `Why` only — no credentials/secrets requested. If `Why`
+contradicts the project's stated architecture (e.g. "single-user only" in its own docs), treat it
+as the reason for the change, not a conflict — the human already accounted for it. Don't ask for
+auth/callback/stack. Login: `/app/sessions/login` only.
 Declare deps in `package.json`; do **not** run `npm install` / `npm run build` / `tsc` — stop when source is done.
 
 ### Choose client stack first
@@ -89,7 +86,7 @@ Full files (`config`, `Provider`, `Callback`, split `main.tsx`, `App.tsx`) — *
 
 Same-frame `window.location` (no `window.top`). No SDK required (SDK/CTA path also valid).
 
-**Rules:** `/callback` unguarded · token in `sessionStorage` keyed by workspace+appId · login `redirect_uri`=`…/callback` · logout `redirect_uri`=`…/` · runtime redirect URIs come from `window.location.origin` (normal browser apps) · **no token on `/` after logout → hosted login now (hand-rolled) or Continue CTA (SDK)** · **never Session API without Bearer** · **`401`/`410`/empty-body `403`/JSON `403` `Access denied` → clear → login/CTA** (stale idle JWT; not billing `BILLING_GRACE_LOCK`).
+**Rules:** `/callback` (or `/callback.html` for static multi-page) unguarded · token in `sessionStorage` keyed by workspace+appId · login `redirect_uri`=`…/callback` (or `…/callback.html`) · logout `redirect_uri`=`…/` · runtime redirect URIs come from `window.location.origin` (normal browser apps) · **no token on `/` after logout → hosted login now (hand-rolled) or Continue CTA (SDK)** · **never Session API without Bearer** · **`401`/`410`/empty-body `403`/JSON `403` `Access denied` → clear → login/CTA** (stale idle JWT; not billing `BILLING_GRACE_LOCK`).
 
 **`src/lib/secureflows.js`:** (ONE file at this path for hand-rolled. Do not split or invent
 Provider/config modules here. SDK path → **React starter files** only, not a hybrid.)
@@ -162,7 +159,7 @@ export async function sessionFetch(path, init = {}) {
 **Load `/`:** no token → `onSignedOut()` (hand-rolled) or Continue CTA (SDK). Do not `sessionFetch` first.
 **Stale restore:** `sessionFetch` signed-out → login/CTA. Grace-lock/other → keep token + signed-in banner, not CTA.
 **Callback:** `sessionToken` query → `storeSessionToken` → `location.replace("/")`.
-**Routing:** `/callback` first/unguarded; gate must call `redirectToHostedLogin` when no token — never mount app + Session GET without Bearer.
+**Routing:** `/callback` (or `/callback.html`) first/unguarded; gate must call `redirectToHostedLogin` when no token — never mount app + Session GET without Bearer.
 **Sign-out:** do not clear token before logout nav; after `/` return → login/CTA immediately.
 
 If this fetch truncates: [SKILL.index.md](https://www.secure-flows.com/ai/secureflows-integration/SKILL.index.md) → `SKILL.part-00-essentials.md`.
@@ -184,9 +181,9 @@ deeper or searchable copies — do not implement from memory or from platform de
 | [Management API (OpenAPI)](https://www.secure-flows.com/docs/openapi/user/secure-flows-user-api.yaml) | Workspaces, applications, users (owner/admin setup) |
 | [Hosted login contract (OpenAPI)](https://www.secure-flows.com/docs/openapi/integration-auth.yaml) | **`/app/sessions/login`** (session apps), `/api/v1/auth/callback`, logout — not `/app/login` |
 | [Documentation search API (OpenAPI)](https://www.secure-flows.com/docs/openapi/docs/secure-flows-docs-api.yaml) | `GET /api/v1/docs/search` for questions not covered here |
-| [Postman examples](https://www.secure-flows.com/docs/examples/index.html) | CI-validated end-to-end collection (reference) |
+| [Postman examples](https://www.secure-flows.com/docs/examples/postman/) | CI-validated end-to-end collection (reference) |
 | [secureflows-js (npm)](https://www.npmjs.com/package/secureflows-js) | Browser SDK (≥ 0.2.0): `login`, `ensureSession`, `logoutWithRedirect`, `fetchSession`, `fetchSessionIdentity` — the full public surface is the correct path; there is nothing exported you should avoid |
-| [secureFlows MCP server (npm)](https://www.npmjs.com/package/secureflows-mcp-server) | Run `npx -y secureflows-mcp-server`, then point your MCP client at `http://127.0.0.1:8787/mcp` (HTTP transport, not stdio) — token-free `secureflows_build_login_url` / `secureflows_build_logout_url` / `secureflows_lint_integration` tools; prefer these over hand-building login/logout URLs |
+| [secureFlows MCP](https://www.secure-flows.com/mcp) | Point your MCP client at `https://www.secure-flows.com/mcp` (HTTP transport, not stdio) — token-free `secureflows_build_login_url` / `secureflows_build_logout_url` / `secureflows_lint_integration`; prefer these over hand-building login/logout URLs |
 | [Billing / plan integration](https://www.secure-flows.com/ai/secureflows-integration/SKILL.part-06-billing-integration.md) | **Only if** the user asked for billing, plans, or purchase integration — otherwise skip |
 
 **Agent entry point (short):** `https://www.secure-flows.com/llms.txt` — points here; does not replace this file.
@@ -202,11 +199,6 @@ Full searchable summary: [Platform-hosted apps](https://www.secure-flows.com/doc
 Minimal prompt, choose stack, and **hand-rolled redirect code** are in **part-00-essentials** (start there if truncated).
 
 ### React + TypeScript + Vite (default)
-
-**New app, and you can run commands:** scaffold it instead of writing these files by hand —
-`npx create-secureflows-app <dir> --workspace=<workspace> --app-id=<appId>` produces this exact
-starter, already configured. Add `--published-origin=https://<preview-host>` on a preview/AI-builder
-host. Then register the printed `/callback` URL in the dashboard allowlist.
 
 **Monorepo:** copy `templates/web-app-secureflows/` verbatim.
 
@@ -269,7 +261,7 @@ export function isCallbackPath(): boolean {
 
 `src/App.tsx` — use `useSecureFlows()`; show loading / signed-out / signed-in UI. On restore:
 **only** `401`/`410`/signed-out (`isSessionSignedOutError`) → clear token + **Continue with secureFlows**;
-**`BILLING_GRACE_LOCK` and other non-signed-out errors** → **keep the signed-in shell**, keep the token, show an error banner (not the Continue CTA). If sign-in click does not leave the page shortly, stop the spinner and show an "open the published preview in a new tab" recovery message; **no** global auth guard.
+**`BILLING_GRACE_LOCK` and other non-signed-out errors** → **keep the signed-in shell**, keep the token, show an error banner (not the Continue CTA). Gate Continue on a stored token (`hasToken` / `sf.getToken()`), **not** on `session === null` — a billing/network restore failure leaves the payload empty but must stay signed-in. If sign-in click does not leave the page shortly, stop the spinner and show an "open the published preview in a new tab" recovery message; **no** global auth guard.
 
 Use the canonical sources in `templates/web-app-secureflows/` when you have repo access — match them line-for-line.
 
@@ -399,7 +391,7 @@ const session = token ? await sf.fetchSession(token) : null;
 - **`403` + `code: BILLING_GRACE_LOCK`**, network failures, and other non-signed-out `SecureFlowsHttpError`s on restore: **do not** call the Continue CTA / `renderSignedOut`. Keep the token, stay on the signed-in UI, and show an error banner (billing lock is not logout). Save paths that already keep signed-in for billing must match restore.
 - Other `SecureFlowsHttpError` statuses (5xx, network-shaped failures) may surface an error banner the same way — never as a soft sign-out.
 - If sign-in click does not leave the page shortly, surface the SDK's `HostedLoginNavigationError` message (or equivalent copy): stop showing "Redirecting...", keep the same CTA, and tell the user to open the published preview in a new tab. Do **not** switch to popup delivery or preview-only auth.
-- Per-page guards only: `if (loading) …` / `if (!session) …` inside feature components.
+- Per-page guards only: `if (loading) …` / `if (!hasToken) …` inside feature components. Do **not** treat `session === null` as signed-out while a token is still stored.
 - Use `sf.login({ redirectUri })` for sign-in — it performs the top-level navigation and preview-iframe fallbacks for you. (SDK ≥ 0.2.0 no longer exports the lower-level navigation/URL-building helpers, so there is no hand-rolled alternative to reach for.)
 
 ### 4. Platform preview layers (optional — some AI builders)
@@ -442,7 +434,7 @@ You do **not** need this to integrate an app. Use it only when you want concrete
 and folder structure beyond the OpenAPI specs. **Reference only** — running the collection requires
 your own Firebase Web API key and test account credentials (not published by secureFlows).
 
-- Guide: `https://www.secure-flows.com/docs/examples/index.html`
+- Guide: `https://www.secure-flows.com/docs/examples/postman/`
 - Collection download:  
   `https://www.secure-flows.com/docs/examples/secureFlows-sanity.postman_collection.json`
 
@@ -520,35 +512,32 @@ record itself:
 - **Any data that must be isolated per user** — isolation is enforced server-side; it
   cannot leak between users by design
 
-### Sizing — read this before designing the record
+### What belongs in the record
 
-Each user's record is one **JSON object**. It is stored as one property per top-level key, while
-the API still reads and writes the complete object. The plan cap is the sum, across all properties,
-of the UTF-8 key bytes plus the UTF-8 bytes of that property's JSON-encoded value:
+Each user's record is one **JSON object** — one property per top-level key; the API still reads and
+writes the complete object. Values are text / JSON. Payload size may be limited by the workspace
+plan — do **not** hardcode or design around specific byte budgets (they can change). If a write is
+rejected for capacity, handle it like any other limit error (`429`: surface a clear message, do not
+crash or retry-loop; the workspace owner can request more capacity). See **Error Reference** /
+`sessionFetch` for the existing pattern.
 
-| Plan | Max payload per user record |
-|------|-----------------------------|
-| Free | 2 KB  (2,048 bytes)  |
-| Base | 4 KB  (4,096 bytes)  |
-| Pro  | 20 KB (20,480 bytes) |
+What does **not** belong as inline payload values:
 
-Writes over the cap are **rejected** with a billing-limit error — they never silently truncate.
+- ❌ **File / media bytes** (images, PDFs, audio) — whether raw or Base64-encoded. Base64 is fine for
+  small string values (tokens, digests); it is not a substitute for putting a whole file in the record.
+- ❌ **Unbounded append-only collections** (full order history, activity feeds, message logs)
 
-The cap is on size, never on time, and never on which fields are allowed. Any text-representable
-value is fine — the two things that do not fit are **binary blobs** and **unbounded collections**:
+Examples:
 
 - ✅ `{"fullName": "…", "address": {…}, "phone": "…", "locale": "he-IL"}` — ordinary user data
-- ✅ `{"avatarObjectKey": "users/42/avatar.webp"}` — ❌ a base64 image, PDF, or audio clip in the payload
+- ✅ `{"avatarObjectKey": "users/42/avatar.webp"}` — opaque pointer; ❌ embedding the image (or its Base64) in the payload
 - ✅ `{"lastOrderId": "A-1004", "orderCount": 37}` — ❌ a 500-row order history appended forever
 
 For images and files, keep bytes in **private** object storage (not a world-readable CDN URL). Store only an
 opaque object key/id in the payload. Serve the file with a short-lived signed URL or an authenticated download
 after the session is checked — a permanently public URL is not protected just because the pointer lives in
-secureFlows. For unbounded append-only collections (activity feeds, message history, event logs), keep the
-collection in your own store and keep the user's identity, preferences, and pointers here.
-Hitting the cap is a signal to move blobs out or upgrade the plan — never a signal that
-secureFlows is the wrong place for the user record, and never a reason to invent a lifetime
-limit that does not exist.
+secureFlows. For unbounded append-only collections, keep the collection in your own store and keep the user's
+identity, preferences, and pointers here.
 
 Do NOT use secureFlows for shared or public data (e.g. a product catalogue, a public
 leaderboard). Every record belongs to exactly one user.
@@ -677,7 +666,7 @@ Do **not** add a **global** route guard (`RequireAuth`, `beforeEach`, root layou
 redirects when there is no session while the starter is restoring a token or showing the sign-in CTA.
 
 Use `SecureFlowsProvider` (see `templates/web-app-secureflows/src/lib/secureFlowsSession.tsx`).
-Guard **individual pages** only (`if (!session) return <SignInScreen />`).
+Guard **individual pages** only (`if (!hasToken) return <SignInScreen />`).
 
 ---
 
@@ -743,10 +732,9 @@ Returns to /callback?sessionToken=… but loops?
 **Never use `/app/login` for session integrations.** Always `/app/sessions/login` with
 `workspace_name`, or hand-roll the same URL in plain redirect apps.
 
-`npx -y secureflows-mcp-server` (point your MCP client at `http://127.0.0.1:8787/mcp`) exposes
-`secureflows_build_login_url` — call it instead of hand-building this URL to eliminate this whole
-class of mistake by construction: it always targets `/app/sessions/login`, never the legacy
-`/app/login` form.
+Hosted MCP at `https://www.secure-flows.com/mcp` exposes `secureflows_build_login_url` —
+call it instead of hand-building this URL to eliminate this whole class of mistake by
+construction: it always targets `/app/sessions/login`, never the legacy `/app/login` form.
 
 **Common agent mistake (causes infinite loop on Base44):**
 
@@ -774,7 +762,7 @@ the top of this file are required, plus:
 
 - [ ] Parsed `workspace` and `appId` from human prompt — did **not** require extra technical prompt text.
 - [ ] Chose correct stack per **Choose client stack** (React default on Lovable/Base44).
-- [ ] **React:** scaffolded via `npx create-secureflows-app`, or reproduced the starter files (`main.tsx`, `SecureFlowsCallback.tsx`, `lib/secureFlowsSession.tsx`, `lib/callbackUri.ts`, `config/secureflows.ts`) where commands cannot be run.
+- [ ] **React:** reproduced starter files (`main.tsx`, `SecureFlowsCallback.tsx`, `lib/secureFlowsSession.tsx`, `lib/callbackUri.ts`, `config/secureflows.ts`). Platform-hosted apps do not run `npx create-secureflows-app` here — see "do not run npm install / build" above.
 - [ ] **Plain JS:** restore existing token on load; start login from one explicit CTA; unguarded `/callback` (or `/callback.html` with matching allowlist).
 - [ ] **Flutter:** only on existing Flutter projects (not new Flutter on Lovable); redirect + unguarded callback.
 - [ ] `npm install secureflows-js` (≥ 0.1.13) where applicable.
@@ -787,7 +775,7 @@ the top of this file are required, plus:
 - [ ] If a cross-origin/iframe `SecurityError` occurred on login or logout, it was reported as a constraint — no login/logout URL was hand-built as a workaround.
 - [ ] Sign-out uses redirect logout without clearing `sessionToken` before navigation (no auth-gate race).
 - [ ] Browser sign-out calls `secureFlowsClient.logoutWithRedirect({ redirectUri })` directly — not a manually built logout URL from app state.
-- [ ] Ran `secureflows_lint_integration` (`npx -y secureflows-mcp-server`, see **Required documents** above) over **all** the generated auth/session files **in one call** (some checks look for handling that may live in any of them) and resolved every `error`-severity finding; `needs_review` findings were checked by hand. Heuristic first pass — not a substitute for the rest of this checklist.
+- [ ] Ran `secureflows_lint_integration` (MCP at `https://www.secure-flows.com/mcp`) over **all** the generated auth/session files **in one call** (some checks look for handling that may live in any of them) and resolved every `error`-severity finding; `needs_review` findings were checked by hand. Heuristic first pass — not a substitute for the rest of this checklist.
 
 ### Documentation lookup (agents)
 
@@ -802,8 +790,10 @@ the top of this file are required, plus:
 
 ### React / JavaScript Web (redirect flow)
 
+- [ ] New app with command access: scaffolded via `npx create-secureflows-app` rather than
+      hand-writing the starter files.
 - [ ] App load restores an existing token only (`sf.getToken()` → `sf.fetchSession(token)`). On `SecureFlowsHttpError` with status `401`/`410` / `isSessionSignedOutError`, clear the token and show the sign-in CTA — no auto redirect.
-- [ ] On restore, **`BILLING_GRACE_LOCK` and other non-signed-out errors** keep the token and the **signed-in** shell with an error banner — never `renderSignedOut` / Continue CTA (Save and restore must agree).
+- [ ] On restore, **`BILLING_GRACE_LOCK` and other non-signed-out errors** keep the token and the **signed-in** shell with an error banner — never `renderSignedOut` / Continue CTA. Gate Continue on a stored token (`hasToken` / `sf.getToken()`), not on `session === null` (Save and restore must agree).
 - [ ] Missing token shows one explicit **Continue with secureFlows** CTA — no auto redirect on mount.
 - [ ] Login click uses the allowlisted published origin (`${SECUREFLOWS_PUBLISHED_ORIGIN}/callback`), not editor/iframe `window.location.origin`.
 - [ ] App code uses `sf.login({ redirectUri })` for sign-in — not manual login URL construction.
@@ -847,7 +837,7 @@ This table covers only the judgment calls the spec can't make for you:
 | Endpoint | Judgment note |
 |---|---|
 | `GET /api/v1/sessions` | Flat JSON object, no wrapper — keys are payload keys. Empty session returns `{}`. |
-| `GET /api/v1/sessions/get/{key}` | **`404` = key never written — return a default value, never throw.** |
+| `GET /api/v1/sessions/get/{key}` | Unwrap **`.value`** from `{ "key": "...", "value": ... }`. **`404` = key never written — return a default value, never throw.** |
 | `POST /api/v1/sessions/set/{key}` | Wrap the value: `{ "value": ... }`. Response is the full updated payload (same shape as `GET /sessions`). |
 | `DELETE /api/v1/sessions/delete/{key}` | Response is a raw boolean (`true`/`false`), not wrapped in an object. |
 | `POST /api/v1/sessions/revoke` | **Permanently destroys the session and its data.** After revoke: clear the token, redirect to hosted login, never reuse it — a subsequent call with it returns `410`. Only on explicit user request (e.g. account deletion) — never as part of ordinary sign-out. |
@@ -902,7 +892,7 @@ async function getSessionKey(key, sessionToken) {
     throw new Error("secureFlows limit reached. Ask the workspace owner to review billing/session limits.");
   }
 
-  return res.json();
+  return (await res.json()).value; // stored data — not the { key, value } envelope
 }
 ```
 
@@ -951,8 +941,7 @@ const sessionToken = sf.getToken();
   records, profile, preferences). → secureFlows.
 - **Temporary working state** — drafts, in-progress UI state, intermediate results only needed while
   the user is actively working. → the app's own state management (React state, IndexedDB, etc). Do not
-  persist this to secureFlows just because storage exists — the size cap makes every byte here a cost
-  against real user data.
+  persist this to secureFlows just because storage exists — map only per-user permanent data.
 - **App/global data** — not owned by an individual user (a shared catalogue, global config). → does not
   belong in secureFlows at all.
 
@@ -1041,7 +1030,7 @@ do **not** clear `sessionToken` *before* the logout navigation. Clearing first c
 guard, which redirects to hosted login before the logout navigation commits. The hosted-login
 cookie is still valid → silent re-auth → “sign out doesn’t work.”
 
-Prefer calling `secureflows_build_logout_url` (`npx -y secureflows-mcp-server`) to build this URL
+Prefer calling `secureflows_build_logout_url` (hosted MCP `https://www.secure-flows.com/mcp`) to build this URL
 — it refuses a `redirect_uri` of `/callback` or one containing `session_token` (the two documented
 anti-patterns below), and its result states the top-level-navigation requirement instead of
 relying on you remembering it.
@@ -1267,7 +1256,7 @@ When the app has a server-side layer, apply this to every protected route:
 | `401` | Missing, invalid, or **JWT-expired** token | Clear token → hosted login (hand-rolled) or Continue CTA (SDK); or `ensureSession({ redirectUri })` |
 | empty-body `403` on Session API | Often **no Bearer** / auth filter reject | Same as signed-out — clear token → login/CTA. Do **not** treat as a normal app error |
 | JSON `403` `{"error":"Access denied"}` | Legacy anonymous after expired JWT (pre-401 fix) | Same as signed-out — clear → login/CTA |
-| `403` + `code: BILLING_GRACE_LOCK` | Workspace billing lock | Keep token; stay **signed-in**; show billing/error banner — **not** Continue CTA / soft sign-out. Restore and Save must agree. |
+| `403` + `code: BILLING_GRACE_LOCK` | Workspace billing lock | Keep token; stay **signed-in**; show billing/error banner — **not** Continue CTA / soft sign-out. Gate Continue on stored token, not `session === null`. Restore and Save must agree. |
 | `404` on a key read | Key not written yet | Return default value — not an error |
 | `404` on session | Session not found | Call `ensureSession({ redirectUri })` |
 | `429` | Billing/session/payload limit reached | Surface a human-readable "limit reached" message; do not crash or spin in a retry loop |
@@ -1375,6 +1364,7 @@ sf.logout(); showError("Session expired");               // WRONG — signed-in 
 
 // ❌ Restore: treat BILLING_GRACE_LOCK / 5xx / network as Continue CTA
 catch (e) { renderSignedOut({ error: e.message }); }     // WRONG if not isSessionSignedOutError
+if (!session) { showContinueCta(); }                     // WRONG — gate CTA on token, not payload
 // Instead: only signed-out → CTA; grace-lock/other → keep token + signed-in shell + error banner
 
 // ❌ After logout / 410: send dead JWT as session_token into hosted login
