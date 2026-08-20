@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.log
+
+# SKILL.md and llms.txt are committed here (this repo is a public mirror; see scripts/sync-pack-assets.mjs)
+

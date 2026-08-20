@@ -1,0 +1,60 @@
+{
+  "name": "secureflows-js",
+  "version": "0.2.0",
+  "description": "Minimal browser JS/TS SDK for secureFlows hosted session login and Session API access.",
+  "llms": "./SKILL.md",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "SKILL.md",
+    "llms.txt"
+  ],
+  "keywords": [
+    "secureflows",
+    "secure-flows",
+    "authentication",
+    "session",
+    "browser",
+    "sdk"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michal-lefler/secureflows-js.git"
+  },
+  "homepage": "https://github.com/michal-lefler/secureflows-js#readme",
+  "bugs": {
+    "url": "https://github.com/michal-lefler/secureflows-js/issues"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:types": "tsc -p tsconfig.json --emitDeclarationOnly --declaration --declarationMap false --outDir dist/types",
+    "build:esm": "tsc -p tsconfig.json --module ES2022 --outDir dist/esm",
+    "build:cjs": "tsc -p tsconfig.json --module commonjs --outDir dist/cjs-tmp && node ./scripts/rename-cjs.mjs",
+    "build": "npm run clean && npm run build:types && npm run build:esm && npm run build:cjs",
+    "sync-pack-assets": "node ./scripts/sync-pack-assets.mjs",
+    "prepack": "npm run build && npm run sync-pack-assets",
+    "sync:vendor-esm": "npm run build && node ./scripts/sync-vendor-esm.mjs",
+    "test": "node --import tsx --test test/secureFlows.test.ts test/storage-keys.test.ts test/session-identity.test.ts test/integration/multi-app-storage.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.2"
+  }
+}

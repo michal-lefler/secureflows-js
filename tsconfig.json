@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": false,
+    // Drops /** @internal */ members from the emitted .d.ts. The published types are the API
+    // surface an agent actually reads (autocomplete, type inspection) — anything visible there
+    // is something it may reasonably call, so the correct-by-construction path has to be the
+    // only one it can see. Type-level only: the methods still exist at runtime, so this does not
+    // break existing JS consumers.
+    "stripInternal": true,
+    "sourceMap": true,
+    "rootDir": "src"
+  },
+  "include": ["src/**/*.ts"]
+}
+
