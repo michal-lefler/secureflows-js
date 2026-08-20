@@ -1,6 +1,6 @@
 # secureflows-js
 
-[![secureFlows](https://img.shields.io/badge/secureFlows-www.secure--flows.com-1a73e8)](https://www.secure-flows.com)
+[![secureFlows](https://img.shields.io/badge/secureFlows-www.secure--flows.com-1a73e8)](https://www.secure-flows.com) [![CI](https://github.com/michal-lefler/secureflows-js/actions/workflows/ci.yml/badge.svg)](https://github.com/michal-lefler/secureflows-js/actions/workflows/ci.yml)
 
 Minimal browser JS/TS SDK for [secureFlows](https://www.secure-flows.com) **hosted session login**
 and Session API reads.

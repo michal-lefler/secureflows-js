@@ -1,0 +1,23 @@
+# Mirror-only workflow: lives in scripts/public-mirrors/overlays/secureflows-js/ in the private
+# secureFlows monorepo (this file has no monorepo-side equivalent — the monorepo has its own CI).
+# Edit it there; scripts/sync-public-mirrors.mjs copies it into this repo on every sync.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
