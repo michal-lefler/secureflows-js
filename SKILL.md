@@ -573,6 +573,9 @@ secureFlows has two completely separate phases. Mixing them up is the most commo
 > stop and tell them: **this is a one-time admin step done in the Workspace Dashboard**.
 > Direct them to: **https://www.secure-flows.com/app/workspaces**
 > Then ask for their `SECUREFLOWS_WORKSPACE` and `SECUREFLOWS_APP_ID` values.
+> **Also hand them the exact redirect URI to enter while they're on that screen** — see
+> **Phase 1 — Admin Setup** below. Telling them upfront prevents the login-loop class of bug
+> entirely; leaving it for them to discover later is how "allowlist mismatch" errors happen.
 
 ---
 
@@ -582,11 +585,25 @@ Done once by the workspace owner at **https://www.secure-flows.com/app/workspace
 
 1. Create a **workspace** — the container for all your app's users and their private data.
    Every user session belongs to exactly one workspace. Users in one workspace can never
-   access data from another.
-2. Register an **application** → produces an `appId` and a `redirectUris` allowlist.
-   Any redirect URI not on this list is rejected at runtime (open-redirect protection).
-   Set a clear **display name** — users see it on the hosted-login account-confirmation
-   prompt ("Continue to `<display name>`?") when the browser is already signed in.
+   access data from another. **Already have a workspace from a previous app?** Reuse it — the
+   relationship is **one workspace → many applications**. A new app never needs a new
+   workspace, only a new application registration inside the existing one.
+2. Register an **application** → produces an `appId`. The same screen also asks for the
+   **redirect URI(s)** to allowlist — give the human the exact value to enter *at this step*,
+   computed from the app being built, rather than letting them discover it later via a
+   login-loop error:
+   - Normal repo, local dev: `http://localhost:<dev-port>/callback` — the port the dev server
+     actually runs on (Vite default `5173`, Next.js `3000`).
+   - Platform-hosted / preview host (Lovable, Base44, similar): the exact preview host from
+     **Platform-hosted apps** above, e.g. `https://<preview-host>/callback`.
+   - Production: the deployed app's real origin + `/callback`.
+   Any redirect URI not on this list is rejected at runtime (open-redirect protection) — see
+   **Login loops** below for what that looks like if it's missed here. Set a clear
+   **display name** — users see it on the hosted-login account-confirmation prompt
+   ("Continue to `<display name>`?") when the browser is already signed in.
+
+Setup questions outside this list (billing/plan requirements, org/team roles, SSO) are outside
+this file's scope — use **Documentation search** above rather than guessing at an answer.
 
 Store the output as **hardcoded constants** in your application. These values **never come
 from client input** and are never read from environment variables at runtime:
